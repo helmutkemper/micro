@@ -1,4 +1,4 @@
-//go:build helform_go
+//go:build helform_simple
 
 package main
 

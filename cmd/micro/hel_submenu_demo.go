@@ -61,51 +61,39 @@ var helMenuStack []*helMenu // PT-BR: pilha de menus | EN: menu stack
 // ----------------------------
 
 func newRootMenu() *helMenu {
-	// Submenu "Inserções"
+	// Submenu Inserções (exemplo que você já tinha)
 	insertSub := &helMenu{
 		title: " Inserções ",
 		items: []helMenuItem{
-			{
-				key:   'a',
-				title: `Inserir "estou vivo!"`,
-				action: func() (string, error) {
-					// PT-BR: Agendar inserção no loop principal (timerChan em micro.go)
-					// EN:    Schedule insertion on main loop (timerChan in micro.go)
-					go func() {
-						txt := "estou vivo!"
-						timerChan <- func() {
-							for _, r := range txt {
-								ev := tcell.NewEventKey(tcell.KeyRune, r, tcell.ModNone, "")
-								action.Tabs.HandleEvent(ev)
-							}
-							// opcional: quebra de linha
-							// action.Tabs.HandleEvent(tcell.NewEventKey(tcell.KeyEnter, 0, tcell.ModNone, ""))
+			{key: 'a', title: `Inserir "estou vivo!"`, action: func() (string, error) {
+				go func() {
+					txt := "estou vivo!"
+					timerChan <- func() {
+						for _, r := range txt {
+							ev := tcell.NewEventKey(tcell.KeyRune, r, tcell.ModNone, "")
+							action.Tabs.HandleEvent(ev)
 						}
-					}()
-					return `Inserido: "estou vivo!"`, nil
-				},
-			},
-			{
-				key:   't',
-				title: "Inserir timestamp (RFC3339)",
-				action: func() (string, error) {
-					go func() {
-						now := time.Now().Format(time.RFC3339)
-						timerChan <- func() {
-							for _, r := range now {
-								ev := tcell.NewEventKey(tcell.KeyRune, r, tcell.ModNone, "")
-								action.Tabs.HandleEvent(ev)
-							}
-							action.Tabs.HandleEvent(tcell.NewEventKey(tcell.KeyEnter, 0, tcell.ModNone, ""))
+					}
+				}()
+				return `Inserido: "estou vivo!"`, nil
+			}},
+			{key: 't', title: "Inserir timestamp (RFC3339)", action: func() (string, error) {
+				go func() {
+					now := time.Now().Format(time.RFC3339)
+					timerChan <- func() {
+						for _, r := range now {
+							ev := tcell.NewEventKey(tcell.KeyRune, r, tcell.ModNone, "")
+							action.Tabs.HandleEvent(ev)
 						}
-					}()
-					return "Timestamp inserido", nil
-				},
-			},
+						action.Tabs.HandleEvent(tcell.NewEventKey(tcell.KeyEnter, 0, tcell.ModNone, ""))
+					}
+				}()
+				return "Timestamp inserido", nil
+			}},
 		},
 	}
 
-	// Submenu "Ferramentas" (exemplo)
+	// Submenu Ferramentas
 	toolsSub := &helMenu{
 		title: " Ferramentas ",
 		items: []helMenuItem{
@@ -113,8 +101,18 @@ func newRootMenu() *helMenu {
 				return "HEL-1: estou vivo! ✔", nil
 			}},
 			{key: '2', title: "Tarefa custom", action: func() (string, error) {
-				// sua lógica aqui
 				return "HEL-2: tarefa custom concluída.", nil
+			}},
+		},
+	}
+
+	// Submenu Formulários (abre o seu formulário dinâmico)
+	formsSub := &helMenu{
+		title: " Formulários ",
+		items: []helMenuItem{
+			{key: 'f', title: "Abrir formulário…", action: func() (string, error) {
+				helFormOpen()
+				return "form: aberto", nil
 			}},
 		},
 	}
@@ -125,6 +123,7 @@ func newRootMenu() *helMenu {
 		items: []helMenuItem{
 			{key: 'i', title: "Inserções →", sub: insertSub},
 			{key: 'f', title: "Ferramentas →", sub: toolsSub},
+			{key: 'o', title: "Formulários →", sub: formsSub},
 			{key: 'q', title: "Fechar", action: func() (string, error) {
 				helMenuCloseAll()
 				return "helmenu: fechado", nil
