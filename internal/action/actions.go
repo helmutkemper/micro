@@ -10,15 +10,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/helmutkemper/micro/v2/internal/buffer"
+	"github.com/helmutkemper/micro/v2/internal/clipboard"
+	"github.com/helmutkemper/micro/v2/internal/config"
+	"github.com/helmutkemper/micro/v2/internal/display"
+	"github.com/helmutkemper/micro/v2/internal/screen"
+	"github.com/helmutkemper/micro/v2/internal/shell"
+	"github.com/helmutkemper/micro/v2/internal/util"
 	shellquote "github.com/kballard/go-shellquote"
 	"github.com/micro-editor/tcell/v2"
-	"github.com/zyedidia/micro/v2/internal/buffer"
-	"github.com/zyedidia/micro/v2/internal/clipboard"
-	"github.com/zyedidia/micro/v2/internal/config"
-	"github.com/zyedidia/micro/v2/internal/display"
-	"github.com/zyedidia/micro/v2/internal/screen"
-	"github.com/zyedidia/micro/v2/internal/shell"
-	"github.com/zyedidia/micro/v2/internal/util"
 )
 
 // ScrollUp is not an action

@@ -12,13 +12,13 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/helmutkemper/micro/v2/internal/buffer"
+	"github.com/helmutkemper/micro/v2/internal/clipboard"
+	"github.com/helmutkemper/micro/v2/internal/config"
+	"github.com/helmutkemper/micro/v2/internal/screen"
+	"github.com/helmutkemper/micro/v2/internal/shell"
+	"github.com/helmutkemper/micro/v2/internal/util"
 	shellquote "github.com/kballard/go-shellquote"
-	"github.com/zyedidia/micro/v2/internal/buffer"
-	"github.com/zyedidia/micro/v2/internal/clipboard"
-	"github.com/zyedidia/micro/v2/internal/config"
-	"github.com/zyedidia/micro/v2/internal/screen"
-	"github.com/zyedidia/micro/v2/internal/shell"
-	"github.com/zyedidia/micro/v2/internal/util"
 )
 
 // A Command contains information about how to execute a command

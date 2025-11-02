@@ -1,0 +1,1 @@
+go run -tags demo_estou_vivo ./cmd/micro

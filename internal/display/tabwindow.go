@@ -1,12 +1,12 @@
 package display
 
 import (
+	"github.com/helmutkemper/micro/v2/internal/buffer"
+	"github.com/helmutkemper/micro/v2/internal/config"
+	"github.com/helmutkemper/micro/v2/internal/screen"
+	"github.com/helmutkemper/micro/v2/internal/util"
 	runewidth "github.com/mattn/go-runewidth"
 	"github.com/micro-editor/tcell/v2"
-	"github.com/zyedidia/micro/v2/internal/buffer"
-	"github.com/zyedidia/micro/v2/internal/config"
-	"github.com/zyedidia/micro/v2/internal/screen"
-	"github.com/zyedidia/micro/v2/internal/util"
 )
 
 type TabWindow struct {

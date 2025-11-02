@@ -9,9 +9,9 @@ import (
 	"os/exec"
 	"os/signal"
 
+	"github.com/helmutkemper/micro/v2/internal/screen"
+	"github.com/helmutkemper/micro/v2/internal/util"
 	shellquote "github.com/kballard/go-shellquote"
-	"github.com/zyedidia/micro/v2/internal/screen"
-	"github.com/zyedidia/micro/v2/internal/util"
 )
 
 // ExecCommand executes a command using exec

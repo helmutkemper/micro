@@ -11,11 +11,11 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/helmutkemper/micro/v2/internal/config"
+	"github.com/helmutkemper/micro/v2/internal/screen"
+	"github.com/helmutkemper/micro/v2/internal/util"
 	"github.com/micro-editor/json5"
 	"github.com/micro-editor/tcell/v2"
-	"github.com/zyedidia/micro/v2/internal/config"
-	"github.com/zyedidia/micro/v2/internal/screen"
-	"github.com/zyedidia/micro/v2/internal/util"
 )
 
 var Binder = map[string]func(e Event, action string){

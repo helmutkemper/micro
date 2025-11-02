@@ -13,21 +13,24 @@ import (
 	"runtime/pprof"
 	"sort"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/go-errors/errors"
+	"github.com/helmutkemper/micro/v2/internal/action"
+	"github.com/helmutkemper/micro/v2/internal/buffer"
+	"github.com/helmutkemper/micro/v2/internal/clipboard"
+	"github.com/helmutkemper/micro/v2/internal/config"
+	"github.com/helmutkemper/micro/v2/internal/screen"
+	"github.com/helmutkemper/micro/v2/internal/shell"
+	"github.com/helmutkemper/micro/v2/internal/util"
 	isatty "github.com/mattn/go-isatty"
 	"github.com/micro-editor/tcell/v2"
 	lua "github.com/yuin/gopher-lua"
-	"github.com/zyedidia/micro/v2/internal/action"
-	"github.com/zyedidia/micro/v2/internal/buffer"
-	"github.com/zyedidia/micro/v2/internal/clipboard"
-	"github.com/zyedidia/micro/v2/internal/config"
-	"github.com/zyedidia/micro/v2/internal/screen"
-	"github.com/zyedidia/micro/v2/internal/shell"
-	"github.com/zyedidia/micro/v2/internal/util"
 )
+
+var helLastEsc time.Time
 
 var (
 	// Command line flags
@@ -375,7 +378,7 @@ func main() {
 			if e, ok := err.(*lua.ApiError); ok {
 				fmt.Println("Lua API error:", e)
 			} else {
-				fmt.Println("Micro encountered an error:", errors.Wrap(err, 2).ErrorStack(), "\nIf you can reproduce this error, please report it at https://github.com/zyedidia/micro/issues")
+				fmt.Println("Micro encountered an error:", errors.Wrap(err, 2).ErrorStack(), "\nIf you can reproduce this error, please report it at https://github.com/helmutkemper/micro/issues")
 			}
 			// immediately backup all buffers with unsaved changes
 			for _, b := range buffer.OpenBuffers {
@@ -418,6 +421,7 @@ func main() {
 	}
 
 	action.InitTabs(b)
+	//action.InfoBar.Message("HEL menu instalado — use Alt-M (ou Esc, depois m no macOS)")
 
 	err = config.RunPluginFn("init")
 	if err != nil {
@@ -478,6 +482,8 @@ func main() {
 		// time out after 10ms
 	}
 
+	//openHelMenu()
+
 	for {
 		DoEvent()
 	}
@@ -496,6 +502,10 @@ func DoEvent() {
 	}
 	action.MainTab().Display()
 	action.InfoBar.Display()
+
+	// [HELMENU] desenha o overlay por cima da UI
+	helMenuDraw()
+
 	screen.Screen.Show()
 
 	// Check for new events
@@ -533,8 +543,52 @@ func DoEvent() {
 	}
 
 	if event != nil {
-		_, resize := event.(*tcell.EventResize)
-		if resize {
+		// 1) MENU: consumir teclas do modal e abrir com Alt-m/Esc,m/µ
+		if ev, ok := event.(*tcell.EventKey); ok {
+			// Se o modal está ativo, trate aqui e NÃO repasse ao editor
+			if helMenuActive {
+				if helMenuHandleKey(ev) {
+					return // consumiu: não deixa a tecla cair no buffer
+				}
+			}
+
+			// Abrir o menu (consumindo a tecla)
+			// Alt/Meta + m
+			if (ev.Modifiers()&tcell.ModAlt) != 0 && (ev.Rune() == 'm' || ev.Rune() == 'M') {
+				helMenuOpen()
+				return
+			}
+			// Esc, depois m (<=200ms)
+			if ev.Key() == tcell.KeyEsc {
+				helLastEsc = time.Now()
+			} else if (ev.Rune() == 'm' || ev.Rune() == 'M') && time.Since(helLastEsc) < 200*time.Millisecond {
+				helMenuOpen()
+				helLastEsc = time.Time{}
+				return
+			}
+			// Option+m que vira 'µ' no macOS
+			if ev.Rune() == 'µ' {
+				helMenuOpen()
+				return
+			}
+		}
+
+		// 2) PASTE: normalizar colagem antes de rotear
+		if ev, ok := event.(*tcell.EventPaste); ok {
+			txt := strings.ReplaceAll(ev.Text(), "\r", "")
+			lines := strings.Split(txt, "\n")
+			for i := 1; i < len(lines); i++ {
+				if len(lines[i]) > 0 && lines[i][0] == '\t' {
+					lines[i] = lines[i][1:] // remove UMA tab de cada linha após a 1a
+				}
+			}
+			cleaned := strings.Join(lines, "\n")
+			event = tcell.NewEventPaste(cleaned, "")
+			// (se sua API tiver outro formato, mantenha-o)
+		}
+
+		// 3) Agora sim, roteie o evento para o editor normalmente
+		if _, resize := event.(*tcell.EventResize); resize {
 			action.InfoBar.HandleEvent(event)
 			action.Tabs.HandleEvent(event)
 		} else if action.InfoBar.HasPrompt {

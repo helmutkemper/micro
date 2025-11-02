@@ -5,10 +5,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/zyedidia/micro/v2/internal/buffer"
-	"github.com/zyedidia/micro/v2/internal/config"
-	"github.com/zyedidia/micro/v2/internal/util"
-	"github.com/zyedidia/micro/v2/pkg/highlight"
+	"github.com/helmutkemper/micro/v2/internal/buffer"
+	"github.com/helmutkemper/micro/v2/internal/config"
+	"github.com/helmutkemper/micro/v2/internal/util"
+	"github.com/helmutkemper/micro/v2/pkg/highlight"
 )
 
 // This file is meant (for now) for autocompletion in command mode, not

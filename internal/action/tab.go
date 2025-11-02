@@ -3,13 +3,13 @@ package action
 import (
 	luar "layeh.com/gopher-luar"
 
+	"github.com/helmutkemper/micro/v2/internal/buffer"
+	"github.com/helmutkemper/micro/v2/internal/config"
+	"github.com/helmutkemper/micro/v2/internal/display"
+	ulua "github.com/helmutkemper/micro/v2/internal/lua"
+	"github.com/helmutkemper/micro/v2/internal/screen"
+	"github.com/helmutkemper/micro/v2/internal/views"
 	"github.com/micro-editor/tcell/v2"
-	"github.com/zyedidia/micro/v2/internal/buffer"
-	"github.com/zyedidia/micro/v2/internal/config"
-	"github.com/zyedidia/micro/v2/internal/display"
-	ulua "github.com/zyedidia/micro/v2/internal/lua"
-	"github.com/zyedidia/micro/v2/internal/screen"
-	"github.com/zyedidia/micro/v2/internal/views"
 )
 
 // The TabList is a list of tabs and a window to display the tab bar
