@@ -30,10 +30,12 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
+// usado para detectar a sequência Esc,m (macOS) como Alt-M
 var helLastEsc time.Time
+var helLastEscForm time.Time // para detectar Esc,f como Alt-F
 
+// flags
 var (
-	// Command line flags
 	flagVersion   = flag.Bool("version", false, "Show the version number and information")
 	flagConfigDir = flag.String("config-dir", "", "Specify a custom location for the configuration directory")
 	flagOptions   = flag.Bool("options", false, "Show all option help")
@@ -43,13 +45,11 @@ var (
 	flagClean     = flag.Bool("clean", false, "Clean configuration directory")
 	optionFlags   map[string]*string
 
-	sighup chan os.Signal
-
+	sighup    chan os.Signal
 	timerChan chan func()
 )
 
 func InitFlags() {
-	// Note: keep this in sync with the man page in assets/packaging/micro.1
 	flag.Usage = func() {
 		fmt.Println("Usage: micro [OPTION]... [FILE]... [+LINE[:COL]] [+/REGEX]")
 		fmt.Println("       micro [OPTION]... [FILE[:LINE[:COL]]]...  (only if the `parsecursor` option is enabled)")
@@ -94,7 +94,6 @@ func InitFlags() {
 	}
 
 	optionFlags = make(map[string]*string)
-
 	for k, v := range config.DefaultAllSettings() {
 		optionFlags[k] = flag.String(k, "", fmt.Sprintf("The %s option. Default value: '%v'.", k, v))
 	}
@@ -102,15 +101,12 @@ func InitFlags() {
 	flag.Parse()
 
 	if *flagVersion {
-		// If -version was passed
 		fmt.Println("Version:", util.Version)
 		fmt.Println("Commit hash:", util.CommitHash)
 		fmt.Println("Compiled on", util.CompileDate)
 		exit(0)
 	}
-
 	if *flagOptions {
-		// If -options was passed
 		var keys []string
 		m := config.DefaultAllSettings()
 		for k := range m {
@@ -124,43 +120,25 @@ func InitFlags() {
 		}
 		exit(0)
 	}
-
 	if util.Debug == "OFF" && *flagDebug {
 		util.Debug = "ON"
 	}
 }
 
-// DoPluginFlags parses and executes any flags that require LoadAllPlugins (-plugin and -clean)
 func DoPluginFlags() {
 	if *flagClean || *flagPlugin != "" {
 		config.LoadAllPlugins()
-
 		if *flagPlugin != "" {
 			args := flag.Args()
-
 			config.PluginCommand(os.Stdout, *flagPlugin, args)
 		} else if *flagClean {
 			CleanConfig()
 		}
-
 		exit(0)
 	}
 }
 
-// LoadInput determines which files should be loaded into buffers
-// based on the input stored in flag.Args()
 func LoadInput(args []string) []*buffer.Buffer {
-	// There are a number of ways micro should start given its input
-
-	// 1. If it is given a files in flag.Args(), it should open those
-
-	// 2. If there is no input file and the input is not a terminal, that means
-	// something is being piped in and the stdin should be opened in an
-	// empty buffer
-
-	// 3. If there is no input file and the input is a terminal, an empty buffer
-	// should be opened
-
 	var filename string
 	var input []byte
 	var err error
@@ -222,21 +200,15 @@ func LoadInput(args []string) []*buffer.Buffer {
 	}
 
 	if len(files) > 0 {
-		// Option 1
-		// We go through each file and load it
 		for i := 0; i < len(files); i++ {
 			buf, err := buffer.NewBufferFromFileWithCommand(files[i], btype, command)
 			if err != nil {
 				screen.TermMessage(err)
 				continue
 			}
-			// If the file didn't exist, input will be empty, and we'll open an empty buffer
 			buffers = append(buffers, buf)
 		}
 	} else if !isatty.IsTerminal(os.Stdin.Fd()) {
-		// Option 2
-		// The input is not a terminal, so something is being piped in
-		// and we should read from stdin
 		input, err = io.ReadAll(os.Stdin)
 		if err != nil {
 			screen.TermMessage("Error reading from stdin: ", err)
@@ -244,7 +216,6 @@ func LoadInput(args []string) []*buffer.Buffer {
 		}
 		buffers = append(buffers, buffer.NewBufferFromStringWithCommand(string(input), filename, btype, command))
 	} else {
-		// Option 3, just open an empty buffer
 		buffers = append(buffers, buffer.NewBufferFromStringWithCommand(string(input), filename, btype, command))
 	}
 
@@ -262,17 +233,13 @@ func checkBackup(name string) error {
 			choice := screen.TermPrompt(msg, []string{"r", "i", "a", "recover", "ignore", "abort"}, true)
 
 			if choice%3 == 0 {
-				// recover
-				err := os.WriteFile(target, input, util.FileMode)
-				if err != nil {
+				if err := os.WriteFile(target, input, util.FileMode); err != nil {
 					return err
 				}
 				return os.Remove(backup)
 			} else if choice%3 == 1 {
-				// delete
 				return os.Remove(backup)
 			} else if choice%3 == 2 {
-				// abort
 				return errors.New("Aborted")
 			}
 		}
@@ -286,11 +253,9 @@ func exit(rc int) {
 			b.Fini()
 		}
 	}
-
 	if screen.Screen != nil {
 		screen.Screen.Fini()
 	}
-
 	os.Exit(rc)
 }
 
@@ -301,8 +266,6 @@ func main() {
 		}
 		exit(0)
 	}()
-
-	var err error
 
 	InitFlags()
 
@@ -319,30 +282,26 @@ func main() {
 
 	InitLog()
 
-	err = config.InitConfigDir(*flagConfigDir)
-	if err != nil {
+	if err := config.InitConfigDir(*flagConfigDir); err != nil {
 		screen.TermMessage(err)
 	}
 
 	config.InitRuntimeFiles(true)
 	config.InitPlugins()
 
-	err = checkBackup("settings.json")
-	if err != nil {
+	if err := checkBackup("settings.json"); err != nil {
 		screen.TermMessage(err)
 		exit(1)
 	}
 
-	err = config.ReadSettings()
-	if err != nil {
+	if err := config.ReadSettings(); err != nil {
 		screen.TermMessage(err)
 	}
-	err = config.InitGlobalSettings()
-	if err != nil {
+	if err := config.InitGlobalSettings(); err != nil {
 		screen.TermMessage(err)
 	}
 
-	// flag options
+	// flags de opções de sessão
 	for k, v := range optionFlags {
 		if *v != "" {
 			nativeValue, err := config.GetNativeValue(k, *v)
@@ -361,8 +320,7 @@ func main() {
 
 	DoPluginFlags()
 
-	err = screen.Init()
-	if err != nil {
+	if err := screen.Init(); err != nil {
 		fmt.Println(err)
 		fmt.Println("Fatal: Micro could not initialize a Screen.")
 		exit(1)
@@ -380,7 +338,6 @@ func main() {
 			} else {
 				fmt.Println("Micro encountered an error:", errors.Wrap(err, 2).ErrorStack(), "\nIf you can reproduce this error, please report it at https://github.com/helmutkemper/micro/issues")
 			}
-			// immediately backup all buffers with unsaved changes
 			for _, b := range buffer.OpenBuffers {
 				if b.Modified() {
 					b.Backup()
@@ -390,13 +347,11 @@ func main() {
 		}
 	}()
 
-	err = config.LoadAllPlugins()
-	if err != nil {
+	if err := config.LoadAllPlugins(); err != nil {
 		screen.TermMessage(err)
 	}
 
-	err = checkBackup("bindings.json")
-	if err != nil {
+	if err := checkBackup("bindings.json"); err != nil {
 		screen.TermMessage(err)
 		exit(1)
 	}
@@ -404,8 +359,7 @@ func main() {
 	action.InitBindings()
 	action.InitCommands()
 
-	err = config.RunPluginFn("preinit")
-	if err != nil {
+	if err := config.RunPluginFn("preinit"); err != nil {
 		screen.TermMessage(err)
 	}
 
@@ -413,31 +367,21 @@ func main() {
 	buffer.SetMessager(action.InfoBar)
 	args := flag.Args()
 	b := LoadInput(args)
-
 	if len(b) == 0 {
-		// No buffers to open
 		screen.Screen.Fini()
 		runtime.Goexit()
 	}
-
 	action.InitTabs(b)
-	//action.InfoBar.Message("HEL menu instalado — use Alt-M (ou Esc, depois m no macOS)")
 
-	err = config.RunPluginFn("init")
-	if err != nil {
+	if err := config.RunPluginFn("init"); err != nil {
 		screen.TermMessage(err)
 	}
-
-	err = config.RunPluginFn("postinit")
-	if err != nil {
+	if err := config.RunPluginFn("postinit"); err != nil {
 		screen.TermMessage(err)
 	}
-
-	err = config.InitColorscheme()
-	if err != nil {
+	if err := config.InitColorscheme(); err != nil {
 		screen.TermMessage(err)
 	}
-
 	if clipErr != nil {
 		log.Println(clipErr, " or change 'clipboard' option")
 	}
@@ -456,7 +400,7 @@ func main() {
 
 	timerChan = make(chan func())
 
-	// Here is the event loop which runs in a separate thread
+	// loop de polling de eventos da tcell
 	go func() {
 		for {
 			screen.Lock()
@@ -468,21 +412,17 @@ func main() {
 		}
 	}()
 
-	// clear the drawchan so we don't redraw excessively
-	// if someone requested a redraw before we started displaying
+	// drena desenho pendente antes de iniciar
 	for len(screen.DrawChan()) > 0 {
 		<-screen.DrawChan()
 	}
 
-	// wait for initial resize event
+	// espera primeiro resize
 	select {
 	case event := <-screen.Events:
 		action.Tabs.HandleEvent(event)
 	case <-time.After(10 * time.Millisecond):
-		// time out after 10ms
 	}
-
-	//openHelMenu()
 
 	for {
 		DoEvent()
@@ -493,7 +433,7 @@ func main() {
 func DoEvent() {
 	var event tcell.Event
 
-	// Display everything
+	// --- desenho ---
 	screen.Screen.Fill(' ', config.DefStyle)
 	screen.Screen.HideCursor()
 	action.Tabs.Display()
@@ -503,15 +443,15 @@ func DoEvent() {
 	action.MainTab().Display()
 	action.InfoBar.Display()
 
-	// [HELMENU] desenha o overlay por cima da UI
+	// overlays (menu / formulário) por cima
 	helMenuDraw()
+	helFormDraw()
 
 	screen.Screen.Show()
 
-	// Check for new events
+	// --- espera por algo acontecer ---
 	select {
 	case f := <-shell.Jobs:
-		// If a new job has finished while running in the background we should execute the callback
 		f.Function(f.Output, f.Args)
 	case <-config.Autosave:
 		for _, b := range buffer.OpenBuffers {
@@ -532,74 +472,124 @@ func DoEvent() {
 		exit(0)
 	}
 
+	// erros da tcell
 	if e, ok := event.(*tcell.EventError); ok {
 		log.Println("tcell event error: ", e.Error())
-
 		if e.Err() == io.EOF {
-			// shutdown due to terminal closing/becoming inaccessible
 			exit(0)
 		}
 		return
 	}
 
-	if event != nil {
-		// 1) MENU: consumir teclas do modal e abrir com Alt-m/Esc,m/µ
-		if ev, ok := event.(*tcell.EventKey); ok {
-			// Se o modal está ativo, trate aqui e NÃO repasse ao editor
-			if helMenuActive {
-				if helMenuHandleKey(ev) {
-					return // consumiu: não deixa a tecla cair no buffer
-				}
-			}
+	if event == nil {
+		return
+	}
 
-			// Abrir o menu (consumindo a tecla)
-			// Alt/Meta + m
-			if (ev.Modifiers()&tcell.ModAlt) != 0 && (ev.Rune() == 'm' || ev.Rune() == 'M') {
-				helMenuOpen()
-				return
-			}
-			// Esc, depois m (<=200ms)
-			if ev.Key() == tcell.KeyEsc {
-				helLastEsc = time.Now()
-			} else if (ev.Rune() == 'm' || ev.Rune() == 'M') && time.Since(helLastEsc) < 200*time.Millisecond {
-				helMenuOpen()
-				helLastEsc = time.Time{}
-				return
-			}
-			// Option+m que vira 'µ' no macOS
-			if ev.Rune() == 'µ' {
-				helMenuOpen()
-				return
+	// ============================
+	// 1) FORM (consome teclas)
+	// ============================
+	if ev, ok := event.(*tcell.EventKey); ok {
+		// --- FORM: atalhos para abrir e consumo das teclas ---
+		// 1) Alt/Meta + F
+		if (ev.Modifiers()&tcell.ModAlt) != 0 && (ev.Rune() == 'f' || ev.Rune() == 'F') {
+			helFormOpen()
+			return // consome: evita cair no binding padrão de busca por regex
+		}
+
+		// 2) Esc seguido de 'f' em até 200ms (muitos terminais codificam Alt como ESC + tecla)
+		if ev.Key() == tcell.KeyEsc {
+			helLastEscForm = time.Now()
+		} else if (ev.Rune() == 'f' || ev.Rune() == 'F') && time.Since(helLastEscForm) < 200*time.Millisecond {
+			helFormOpen()
+			helLastEscForm = time.Time{}
+			return // consome
+		}
+
+		// 3) Option+f no macOS que envia o caractere 'ƒ'
+		if ev.Rune() == 'ƒ' { // U+0192
+			helFormOpen()
+			return // consome (senão o 'ƒ' cai no buffer)
+		}
+
+		// Se o formulário já está ativo, todas as teclas vão para ele
+		if formActive {
+			if helFormHandleKey(ev) {
+				return // consome para não vazar para o editor
 			}
 		}
 
-		// 2) PASTE: normalizar colagem antes de rotear
-		if ev, ok := event.(*tcell.EventPaste); ok {
-			txt := strings.ReplaceAll(ev.Text(), "\r", "")
-			lines := strings.Split(txt, "\n")
-			for i := 1; i < len(lines); i++ {
-				if len(lines[i]) > 0 && lines[i][0] == '\t' {
-					lines[i] = lines[i][1:] // remove UMA tab de cada linha após a 1a
-				}
+		if formActive {
+			if helFormHandleKey(ev) {
+				return
 			}
-			cleaned := strings.Join(lines, "\n")
-			event = tcell.NewEventPaste(cleaned, "")
-			// (se sua API tiver outro formato, mantenha-o)
 		}
-
-		// 3) Agora sim, roteie o evento para o editor normalmente
-		if _, resize := event.(*tcell.EventResize); resize {
-			action.InfoBar.HandleEvent(event)
-			action.Tabs.HandleEvent(event)
-		} else if action.InfoBar.HasPrompt {
-			action.InfoBar.HandleEvent(event)
-		} else {
-			action.Tabs.HandleEvent(event)
+		// atalho: Alt-F abre o formulário
+		if (ev.Modifiers()&tcell.ModAlt) != 0 && (ev.Rune() == 'f' || ev.Rune() == 'F') {
+			helFormOpen()
+			return
 		}
 	}
 
-	err := config.RunPluginFn("onAnyEvent")
-	if err != nil {
+	// ============================
+	// 2) MENU (consome teclas)
+	// ============================
+	if ev, ok := event.(*tcell.EventKey); ok {
+		// se já está aberto, delega e consome
+		if helMenuActive {
+			if helMenuHandleKey(ev) {
+				return
+			}
+		}
+		// abrir com Alt/Meta + M
+		if (ev.Modifiers()&tcell.ModAlt) != 0 && (ev.Rune() == 'm' || ev.Rune() == 'M') {
+			helMenuOpen()
+			return
+		}
+		// Esc seguido de 'm' (<=200ms)
+		if ev.Key() == tcell.KeyEsc {
+			helLastEsc = time.Now()
+		} else if (ev.Rune() == 'm' || ev.Rune() == 'M') && time.Since(helLastEsc) < 200*time.Millisecond {
+			helMenuOpen()
+			helLastEsc = time.Time{}
+			return
+		}
+		// Option+m que vira 'µ' no macOS
+		if ev.Rune() == 'µ' {
+			helMenuOpen()
+			return
+		}
+	}
+
+	// ============================
+	// 3) PASTE (normaliza colagem)
+	// ============================
+	if ev, ok := event.(*tcell.EventPaste); ok {
+		txt := strings.ReplaceAll(ev.Text(), "\r", "")
+		lines := strings.Split(txt, "\n")
+		for i := 1; i < len(lines); i++ {
+			// remove UMA tab no início de cada linha após a primeira
+			if len(lines[i]) > 0 && lines[i][0] == '\t' {
+				lines[i] = lines[i][1:]
+			}
+		}
+		cleaned := strings.Join(lines, "\n")
+		event = tcell.NewEventPaste(cleaned, "")
+	}
+
+	// ============================
+	// 4) roteamento normal
+	// ============================
+	if _, resize := event.(*tcell.EventResize); resize {
+		action.InfoBar.HandleEvent(event)
+		action.Tabs.HandleEvent(event)
+	} else if action.InfoBar.HasPrompt {
+		action.InfoBar.HandleEvent(event)
+	} else {
+		action.Tabs.HandleEvent(event)
+	}
+
+	// hooks de plugins
+	if err := config.RunPluginFn("onAnyEvent"); err != nil {
 		screen.TermMessage(err)
 	}
 }
