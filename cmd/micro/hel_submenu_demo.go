@@ -1,5 +1,7 @@
 //go:build helsubmenu_go
 
+// go run -tags "helsubmenu_go,helform_dynamic_go" ./cmd/micro
+
 package main
 
 import (
@@ -65,6 +67,33 @@ func newRootMenu() *helMenu {
 	insertSub := &helMenu{
 		title: " Inserções ",
 		items: []helMenuItem{
+			// << -------------------- menu --------------------->>
+			{key: 'H', title: "Hsplit (acima/abaixo)", action: func() (string, error) {
+				if err := action.HelRunCmd("hsplit"); err != nil {
+					return "", err
+				}
+				return "Split horizontal criado", nil
+			}},
+			{key: 'V', title: "Vsplit (lado a lado)", action: func() (string, error) {
+				if err := action.HelRunCmd("vsplit"); err != nil {
+					return "", err
+				}
+				return "Split vertical criado", nil
+			}},
+			{key: 'T', title: "Nova aba (tab)", action: func() (string, error) {
+				if err := action.HelRunCmd("tab"); err != nil {
+					return "", err
+				}
+				return "Aba criada", nil
+			}},
+			{key: 'Y', title: "Aba com README.md", action: func() (string, error) {
+				if err := action.HelRunCmd("tab", "README.md"); err != nil {
+					return "", err
+				}
+				return "Aba criada com README.md", nil
+			}},
+
+			// << -------------------- menu --------------------->>
 			{key: 'a', title: `Inserir "estou vivo!"`, action: func() (string, error) {
 				go func() {
 					txt := "estou vivo!"
