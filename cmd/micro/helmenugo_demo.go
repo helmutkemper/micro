@@ -139,7 +139,7 @@ func helMenuDraw() {
 		y0 = 0
 	}
 
-	drawBox(x0, y0, boxW, boxH, " Hel Menu (Alt-M) ")
+	drawBox(x0, y0, boxW, boxH, "---- Hel Menu (Alt-M) ----")
 	// linhas
 	y := y0 + 2
 	for _, it := range helItems {
@@ -184,9 +184,9 @@ func helMenuHandleKey(ev *tcell.EventKey) bool {
 // ---- helpers de desenho com tcell ----
 
 func drawBox(x, y, w, h int, title string) {
-	hor := '─'
-	ver := '│'
-	tl, tr, bl, br := '┌', '┐', '└', '┘'
+	hor, ver := '-', '|'
+	tl, tr, bl, br := '+', '+', '+', '+'
+	//tl, tr, bl, br := '┌', '┐', '└', '┘'
 	st := config.DefStyle
 
 	// bordas
